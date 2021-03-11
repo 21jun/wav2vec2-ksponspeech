@@ -234,14 +234,17 @@ def main():
 
 
     # DATASET
+    # No caching
+    datasets.set_caching_enabled(False)
     dataset = datasets.load_dataset('json', data_files={
-                       "train": 'KsponSpeech_train.json',
+                       "train": 'KsponSpeech_train_sample_100000.json',
                        "validation": 'KsponSpeech_dev.json',
                        "test": 'KsponSpeech_eval_clean.json'}, field="data")
 
     train_dataset = dataset['train']
     val_dataset = dataset['validation']
 
+    print("dataset ready")
 
     wer_metric = datasets.load_metric("wer")
 

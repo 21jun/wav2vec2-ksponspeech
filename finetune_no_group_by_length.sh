@@ -7,11 +7,12 @@ python3 run_asr.py \
 --evaluation_strategy="steps" \
 --save_total_limit="3" \
 --save_steps="300" \
---eval_steps="100" \
+--eval_steps="300" \
 --logging_steps="10" \
 --learning_rate="5e-4" \
 --warmup_steps="3000" \
 --model_name_or_path="facebook/wav2vec2-base" \
 --fp16 \
 --train_split_name="validation" \
---preprocessing_num_workers="8"
+--preprocessing_num_workers="8" \
+--freeze_feature_extractor="false"

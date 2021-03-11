@@ -1,0 +1,11 @@
+*.flac
+*.wav
+transformers/
+.ipynb_checkpoints/
+*.trn
+KsponSpeech_dev.json
+KsponSpeech_eval_clean.json
+KsponSpeech_eval_other.json
+KsponSpeech_train.json
+KsponSpeech_train_sample.json
+KsponSpeech_train_sample_100000.json
