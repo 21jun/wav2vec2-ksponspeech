@@ -235,7 +235,7 @@ def main():
 
     # DATASET
     # No caching
-    datasets.set_caching_enabled(False)
+    # datasets.set_caching_enabled(False)
     dataset = datasets.load_dataset('json', data_files={
                        "train": 'KsponSpeech_train_sample_100000.json',
                        "validation": 'KsponSpeech_dev.json',
@@ -254,8 +254,8 @@ def main():
         batch["sampling_rate"] = sampling_rate
         return batch
 
-    train_dataset = train_dataset.map(map_to_array, remove_columns=["file"], load_from_cache_file=False)
-    val_dataset = val_dataset.map(map_to_array, remove_columns=["file"], load_from_cache_file=False)
+    train_dataset = train_dataset.map(map_to_array, remove_columns=["file"], load_from_cache_file=True)
+    val_dataset = val_dataset.map(map_to_array, remove_columns=["file"], load_from_cache_file=True)
 
     def prepare_dataset(batch):
         # check that all files have the correct sampling rate
