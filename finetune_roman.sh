@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-python3 run_asr.py \
---output_dir="./wav2vec2-base-100h_ko_short" \
+python3 run_asr_roman.py \
+--output_dir="./wav2vec2-base-100h-roman" \
 --num_train_epochs="30" \
 --per_device_train_batch_size="8" \
 --per_device_eval_batch_size="8" \
@@ -8,11 +8,11 @@ python3 run_asr.py \
 --save_total_limit="3" \
 --save_steps="300" \
 --eval_steps="300" \
---logging_steps="10" \
+--logging_steps="20" \
 --learning_rate="5e-4" \
 --warmup_steps="3000" \
 --model_name_or_path="facebook/wav2vec2-base" \
 --fp16 \
---train_split_name="validation" \
 --preprocessing_num_workers="8" \
---freeze_feature_extractor="True"
+--group_by_length \
+--freeze_feature_extractor

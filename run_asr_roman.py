@@ -9,9 +9,6 @@ import torch.nn as nn
 from packaging import version
 
 import soundfile as sf
-import json
-from transformers.configuration_utils import PretrainedConfig
-
 from transformers import (
     HfArgumentParser,
     Trainer,
@@ -19,7 +16,6 @@ from transformers import (
     Wav2Vec2ForCTC,
     Wav2Vec2Processor,
     is_apex_available,
-    Wav2Vec2CTCTokenizer
 )
 
 
@@ -39,13 +35,11 @@ class ModelArguments:
     """
 
     model_name_or_path: str = field(
-        metadata={
-            "help": "Path to pretrained model or model identifier from huggingface.co/models"}
+        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
     )
     cache_dir: Optional[str] = field(
         default=None,
-        metadata={
-            "help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
+        metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
     )
     freeze_feature_extractor: Optional[bool] = field(
         default=True, metadata={"help": "Whether to freeze the feature extractor layers of the model."}
@@ -119,10 +113,8 @@ class DataCollatorCTCWithPadding:
     def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
         # split inputs and labels since they have to be of different lenghts and need
         # different padding methods
-        input_features = [{"input_values": feature["input_values"]}
-                          for feature in features]
-        label_features = [{"input_ids": feature["labels"]}
-                          for feature in features]
+        input_features = [{"input_values": feature["input_values"]} for feature in features]
+        label_features = [{"input_ids": feature["labels"]} for feature in features]
 
         batch = self.processor.pad(
             input_features,
@@ -141,8 +133,7 @@ class DataCollatorCTCWithPadding:
             )
 
         # replace padding with -100 to ignore loss correctly
-        labels = labels_batch["input_ids"].masked_fill(
-            labels_batch.attention_mask.ne(1), -100)
+        labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
 
         batch["labels"] = labels
 
@@ -184,8 +175,7 @@ class CTCTrainer(Trainer):
             elif model.module.config.ctc_loss_reduction == "sum":
                 loss = loss.sum() / (inputs["labels"] >= 0).sum()
             else:
-                raise ValueError(
-                    f"{model.config.ctc_loss_reduction} is not valid. Choose one of ['mean', 'sum']")
+                raise ValueError(f"{model.config.ctc_loss_reduction} is not valid. Choose one of ['mean', 'sum']")
 
         if self.args.gradient_accumulation_steps > 1:
             loss = loss / self.args.gradient_accumulation_steps
@@ -208,43 +198,20 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser(
-        (ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
 
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    print("********")
-    print(model_args)
-    print("********")
+    model = Wav2Vec2ForCTC.from_pretrained(model_args.model_name_or_path, cache_dir=model_args.cache_dir)
+    processor = Wav2Vec2Processor.from_pretrained(model_args.model_name_or_path, cache_dir=model_args.cache_dir)
 
-
-    config = PretrainedConfig.from_json_file("wav2vec2_config.json")
-    model = Wav2Vec2ForCTC(config)
-
-    # 아래코드로 프로세서 config 추출
-    # processor = Wav2Vec2Processor.from_pretrained(
-    # model_args.model_name_or_path, cache_dir=model_args.cache_dir)
-    # processor.tokenizer = Wav2Vec2CTCTokenizer("vocab.json")
-    # processor.save_pretrained("processor_save/")
-    # exit()
-
-    # vocab 설정완료
-    processor = Wav2Vec2Processor.from_pretrained(
-        "processor_save/")
-
-
-    # DATASET
-    # No caching
-    datasets.set_caching_enabled(True)
     dataset = datasets.load_dataset('json', data_files={
-                       "train": 'KsponSpeech_train_sample_shorter_50000.json',
-                       "validation": 'KsponSpeech_dev_sample_shorter.json',
+                       "train": 'KsponSpeech_train_roman_short_50000.json',
+                       "validation": 'KsponSpeech_dev_roman_short_50000.json',
                        "test": 'KsponSpeech_eval_clean.json'}, field="data")
 
     train_dataset = dataset['train']
     val_dataset = dataset['validation']
-
-    print("dataset ready")
 
     wer_metric = datasets.load_metric("wer")
 
@@ -254,8 +221,8 @@ def main():
         batch["sampling_rate"] = sampling_rate
         return batch
 
-    train_dataset = train_dataset.map(map_to_array, remove_columns=["file"], load_from_cache_file=True)
-    val_dataset = val_dataset.map(map_to_array, remove_columns=["file"], load_from_cache_file=True)
+    train_dataset = train_dataset.map(map_to_array, remove_columns=["file"])
+    val_dataset = val_dataset.map(map_to_array, remove_columns=["file"])
 
     def prepare_dataset(batch):
         # check that all files have the correct sampling rate
@@ -263,8 +230,7 @@ def main():
             len(set(batch["sampling_rate"])) == 1
         ), f"Make sure all inputs have the same sampling rate of {processor.feature_extractor.sampling_rate}."
 
-        batch["input_values"] = processor(
-            batch["speech"], sampling_rate=batch["sampling_rate"][0]).input_values
+        batch["input_values"] = processor(batch["speech"], sampling_rate=batch["sampling_rate"][0]).input_values
         with processor.as_target_processor():
             batch["labels"] = processor(batch["text"]).input_ids
         return batch
@@ -282,14 +248,13 @@ def main():
         num_proc=data_args.preprocessing_num_workers,
     )
 
-    data_collator = DataCollatorCTCWithPadding(
-        processor=processor, padding=True)
+    data_collator = DataCollatorCTCWithPadding(processor=processor, padding=True)
 
     def compute_metrics(pred):
         pred_logits = pred.predictions
         pred_ids = np.argmax(pred_logits, axis=-1)
 
-        pred.label_ids[pred.label_ids == -100] = 0
+        pred.label_ids[pred.label_ids == -100] = processor.tokenizer.pad_token_id
 
         pred_str = processor.batch_decode(pred_ids)
         # we do not want to group tokens when computing the metrics
