@@ -9,9 +9,6 @@ import torch.nn as nn
 from packaging import version
 
 import soundfile as sf
-import json
-from transformers.configuration_utils import PretrainedConfig
-
 from transformers import (
     HfArgumentParser,
     Trainer,
@@ -19,7 +16,8 @@ from transformers import (
     Wav2Vec2ForCTC,
     Wav2Vec2Processor,
     is_apex_available,
-    Wav2Vec2CTCTokenizer
+    Wav2Vec2CTCTokenizer,
+    PretrainedConfig
 )
 
 
@@ -213,32 +211,35 @@ def main():
 
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    print("********")
-    print(model_args)
-    print("********")
+    # config = PretrainedConfig.from_json_file(
+    #     "/root/develop/wav2vec2-ko/model_save_roman_new_token/config.json")
+    # model = Wav2Vec2ForCTC(config)
 
-    # from pretrained
-    # model = Wav2Vec2ForCTC.from_pretrained(
-    #     "/root/develop/wav2vec2-ko/model_korean_base")
     model = Wav2Vec2ForCTC.from_pretrained(
-        "/root/develop/wav2vec2-ko/wav2vec2-korean-base-continue/checkpoint-170100")
+        "/root/develop/wav2vec2-ko/model_save_roman_new"
+    )
 
-    # vocab 설정완료
+    # model = Wav2Vec2ForCTC.from_pretrained(
+    #     model_args.model_name_or_path, cache_dir=model_args.cache_dir)
+
     processor = Wav2Vec2Processor.from_pretrained(
-        "/root/develop/wav2vec2-ko/processor_korean_base")
+        "/root/develop/wav2vec2-ko/processor_save_roman_new_token")
 
-    # DATASET
-    # No caching
-    datasets.set_caching_enabled(True)
+    # 아래코드로 프로세서 config 추출
+    # processor = Wav2Vec2Processor.from_pretrained(
+    #     model_args.model_name_or_path, cache_dir=model_args.cache_dir)
+    # processor.tokenizer = Wav2Vec2CTCTokenizer("vocab.json")
+    # processor.save_pretrained("processor_save_roman_new_token/")
+    # model.save_pretrained("model_save_roman_new_token/")
+    # exit()
+
     dataset = datasets.load_dataset('json', data_files={
-        "train": 'KsponSpeech_train_sample_shorter_50000.json',
-        "validation": 'KsponSpeech_dev_sample_shorter.json',
+        "train": 'KsponSpeech_train_roman_short_50000.json',
+        "validation": 'KsponSpeech_dev_roman_short_50000.json',
         "test": 'KsponSpeech_eval_clean.json'}, field="data")
 
     train_dataset = dataset['train']
     val_dataset = dataset['validation']
-
-    print("dataset ready")
 
     wer_metric = datasets.load_metric("wer")
 
@@ -248,10 +249,8 @@ def main():
         batch["sampling_rate"] = sampling_rate
         return batch
 
-    train_dataset = train_dataset.map(map_to_array, remove_columns=[
-                                      "file"], load_from_cache_file=True)
-    val_dataset = val_dataset.map(map_to_array, remove_columns=[
-                                  "file"], load_from_cache_file=True)
+    train_dataset = train_dataset.map(map_to_array, remove_columns=["file"])
+    val_dataset = val_dataset.map(map_to_array, remove_columns=["file"])
 
     def prepare_dataset(batch):
         # check that all files have the correct sampling rate
@@ -285,7 +284,8 @@ def main():
         pred_logits = pred.predictions
         pred_ids = np.argmax(pred_logits, axis=-1)
 
-        pred.label_ids[pred.label_ids == -100] = 0
+        pred.label_ids[pred.label_ids == -
+                       100] = processor.tokenizer.pad_token_id
 
         pred_str = processor.batch_decode(pred_ids)
         # we do not want to group tokens when computing the metrics

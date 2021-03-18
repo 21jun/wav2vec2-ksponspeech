@@ -8,3 +8,6 @@ transformers/
 KsponSpeech_*.json
 
 wav2vec2-base-100h*
+wav2vec2-korean*
+model_save_*
+model_korean*

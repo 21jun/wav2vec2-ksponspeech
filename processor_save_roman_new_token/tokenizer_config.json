@@ -1,0 +1,13 @@
+{
+    "unk_token": "<unk>",
+    "bos_token": "<s>",
+    "eos_token": "</s>",
+    "pad_token": "<pad>",
+    "do_lower_case": false,
+    "word_delimiter_token": "|",
+    "return_attention_mask": false,
+    "do_normalize": true,
+    "special_tokens_map_file": "/root/.cache/huggingface/transformers/839634132228a68d786dd782bdfe169d18894f145924a509a48edc7f363db37f.9d6cd81ef646692fb1c169a880161ea1cb95f49694f220aced9b704b457e51dd",
+    "tokenizer_file": null,
+    "name_or_path": "facebook/wav2vec2-base"
+}
